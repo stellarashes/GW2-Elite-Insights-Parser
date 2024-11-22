@@ -4533,6 +4533,8 @@ public static class SkillIDs
     public const long UnstoppableDecima = 75246;
     public const long PealOfHarmony = 75290;
     public const long PealOfDiscord = 75301;
+    public const long Fluxlance = 75155;
+    public const long DecimaMultipleFluxlance = 75207;
     #endregion
 }
 

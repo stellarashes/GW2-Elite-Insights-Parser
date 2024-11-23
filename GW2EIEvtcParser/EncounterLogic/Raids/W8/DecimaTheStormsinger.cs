@@ -93,7 +93,14 @@ internal class DecimaTheStormsinger : MountBalrior
         return phases;
     }
 
-
+    internal static Dictionary<long, string> fluxlanceBuffToOverheadMap = new Dictionary<long, string>
+    {
+        {TargetOrder1JW, ParserIcons.TargetOrder1Overhead},
+        {TargetOrder2JW, ParserIcons.TargetOrder2Overhead},
+        {TargetOrder3JW, ParserIcons.TargetOrder3Overhead},
+        {TargetOrder4JW, ParserIcons.TargetOrder4Overhead},
+        {TargetOrder5JW, ParserIcons.TargetOrder5Overhead},
+    };
     internal override void ComputeNPCCombatReplayActors(NPC target, ParsedEvtcLog log, CombatReplay replay)
     {
         var lifespan = ((int)replay.TimeOffsets.start, (int)replay.TimeOffsets.end);
@@ -110,6 +117,58 @@ internal class DecimaTheStormsinger : MountBalrior
                         var rotation = new AngleConnector(effect.Rotation.Z + 90);
                         var slice = (PieDecoration)new PieDecoration(1200, 32, lifespan2, Colors.LightOrange, 0.4, new PositionConnector(effect.Position)).UsingRotationConnector(rotation);
                         replay.AddDecorationWithBorder(slice, Colors.LightOrange, 0.6);
+                    }
+                }
+
+                var cls = target.GetCastEvents(log, log.FightData.FightStart, log.FightData.FightEnd).ToArray();
+                var fluxlances = cls.Where(x => x.SkillId == Fluxlance);
+                int start;
+                int end;
+                var length = 3000U;
+                var width = 50U;
+
+                foreach (var c in fluxlances)
+                {
+
+                    start = (int)c.Time;
+                    end = (int)c.EndTime;
+                    if (replay.Rotations.Count != 0)
+                    {
+                        var connector = new AgentConnector(target).WithOffset(new(length / 2, 0, 0), true);
+                        var rotationConnector = new AgentFacingConnector(target);
+                        replay.Decorations.Add(
+                            new RectangleDecoration(length, width, (start, end), Colors.Red, 0.7, connector)
+                                .UsingRotationConnector(rotationConnector)
+                        );
+                        if (end > start + c.ExpectedDuration)
+                        {
+                            replay.Decorations.Add(new RectangleDecoration(length, width, (start + c.ExpectedDuration, end), Colors.LightGrey, 0.7, connector).UsingRotationConnector(rotationConnector));
+                        }
+                    }
+                }
+
+                var multipleLances = cls.Where(x => x.SkillId == FluxlanceFusilladeCast);
+                var keys = fluxlanceBuffToOverheadMap.Keys;
+                foreach (var c in multipleLances)
+                {
+                    var playerBuffStatuses = log.PlayerList.Select(p =>
+                        (p, keys.Select(k => p.GetBuffStatus(log, k, c.Time))
+                            .Where(buff => buff.Value > 0))
+                    );
+
+                    foreach (var tuple in playerBuffStatuses)
+                    {
+                        if (!tuple.Item2.Any())
+                        {
+                            continue;
+                        }
+
+                        var buff = tuple.Item2.First();
+                        var connector = new AgentConnector(target).WithOffset(new(length / 2, 0, 0), true);
+                        var toPlayerConnector = new AgentFacingAgentConnector(target, tuple.p);
+                        var decoration = new RectangleDecoration(length, width, (c.Time, buff.End), Colors.Orange, 0.3, connector)
+                                .UsingRotationConnector(toPlayerConnector);
+                        replay.Decorations.Add(decoration);
                     }
                 }
                 break;
@@ -151,11 +210,13 @@ internal class DecimaTheStormsinger : MountBalrior
     {
         base.ComputePlayerCombatReplayActors(player, log, replay);
 
-        // Target Order Overhead
-        replay.AddOverheadIcons(player.GetBuffStatus(log, TargetOrder1JW, log.FightData.LogStart, log.FightData.LogEnd).Where(x => x.Value > 0), player, ParserIcons.TargetOrder1Overhead);
-        replay.AddOverheadIcons(player.GetBuffStatus(log, TargetOrder2JW, log.FightData.LogStart, log.FightData.LogEnd).Where(x => x.Value > 0), player, ParserIcons.TargetOrder2Overhead);
-        replay.AddOverheadIcons(player.GetBuffStatus(log, TargetOrder3JW, log.FightData.LogStart, log.FightData.LogEnd).Where(x => x.Value > 0), player, ParserIcons.TargetOrder3Overhead);
-        replay.AddOverheadIcons(player.GetBuffStatus(log, TargetOrder4JW, log.FightData.LogStart, log.FightData.LogEnd).Where(x => x.Value > 0), player, ParserIcons.TargetOrder4Overhead);
-        replay.AddOverheadIcons(player.GetBuffStatus(log, TargetOrder5JW, log.FightData.LogStart, log.FightData.LogEnd).Where(x => x.Value > 0), player, ParserIcons.TargetOrder5Overhead);
+        foreach (var kvp in fluxlanceBuffToOverheadMap)
+        {
+            replay.AddOverheadIcons(
+                player.GetBuffStatus(log, kvp.Key, log.FightData.LogStart, log.FightData.LogEnd).Where(x => x.Value > 0),
+                player,
+                kvp.Value
+            );
+        }
     }
 }

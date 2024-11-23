@@ -4552,6 +4552,7 @@ public static class SkillIDs
     public const long PealOfHarmony = 75290;
     public const long PealOfDiscord = 75301;
     public const long FluxlanceSalvo5 = 75348;
+    public const long FluxlanceFusilladeCast = 75207;
     #endregion
 }
 

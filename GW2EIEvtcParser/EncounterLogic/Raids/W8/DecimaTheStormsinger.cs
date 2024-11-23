@@ -16,6 +16,15 @@ internal class DecimaTheStormsinger : MountBalrior
 {
     public DecimaTheStormsinger(int triggerID) : base(triggerID)
     {
+        MechanicList.AddRange(new List<Mechanic>()
+        {
+            new PlayerDstHitMechanic(Fluxlance, "Fluxlance", new MechanicPlotlySetting(Symbols.StarSquare, Colors.LightOrange), "Fluxlance.H", "Hit by Fluxlance (Single Orange Arrow)", "Fluxlance Hit", 0),
+            new PlayerDstHitMechanic(FluxlanceFusillade, "Fluxlance Fusillade", new MechanicPlotlySetting(Symbols.StarDiamond, Colors.LightOrange), "FluxFusi.H", "Hit by Fluxlance Fusillade (Sequential Orange Arrows)", "Fluxlance Fusillade Hit", 0),
+            new PlayerDstHitMechanic([FluxlanceSalvo1, FluxlanceSalvo2, FluxlanceSalvo3, FluxlanceSalvo4, FluxlanceSalvo5], "Fluxlance Salvo", new MechanicPlotlySetting(Symbols.StarDiamondOpen, Colors.LightOrange), "FluxSalvo.H", "Hit by Fluxlance Salvo (Simultaneous Orange Arrows)", "Fluxlance Salvo Hit", 0),
+            new PlayerDstBuffApplyMechanic([TargetOrder1JW, TargetOrder2JW, TargetOrder3JW, TargetOrder4JW, TargetOrder5JW], "Target Order", new MechanicPlotlySetting(Symbols.StarTriangleDown, Colors.LightOrange), "FluxOrder.T", "Targeted by Fluxlance (Target Order)", "Fluxlance Target (Sequential)", 0),
+            new PlayerDstBuffApplyMechanic(FluxlanceTargetBuff1, "Fluxlance", new MechanicPlotlySetting(Symbols.StarTriangleDown, Colors.Orange), "Fluxlance.T", "Targeted by Fluxlance", "Fluxlance Target", 0),
+            new PlayerDstBuffApplyMechanic(FluxlanceRedArrowTargetBuff, "Fluxlance", new MechanicPlotlySetting(Symbols.StarTriangleDown, Colors.Red), "FluxRed.T", "Targeted by Fluxlance (Red Arrow)", "Fluxlance (Red Arrow)", 0),
+        });
         Extension = "decima";
         Icon = EncounterIconDecima;
         EncounterCategoryInformation.InSubCategoryOrder = 1;
@@ -48,6 +57,13 @@ internal class DecimaTheStormsinger : MountBalrior
         ];
     }
 
+    internal override List<InstantCastFinder> GetInstantCastFinders()
+    {
+        return
+        [
+            new DamageCastFinder(ThrummingPresenceBuff, ThrummingPresenceDamage),
+        ];
+    }
 
     internal override List<PhaseData> GetPhases(ParsedEvtcLog log, bool requirePhases)
     {
@@ -84,6 +100,18 @@ internal class DecimaTheStormsinger : MountBalrior
         switch (target.ID)
         {
             case (int)ArcDPSEnums.TargetID.Decima:
+                if (log.CombatData.TryGetEffectEventsBySrcWithGUID(target.AgentItem, EffectGUIDs.DecimaMainshockIndicator, out var mainshockSlices))
+                {
+                    foreach (EffectEvent effect in mainshockSlices)
+                    {
+                        long duration = 2300;
+                        long growing = effect.Time + duration;
+                        (long start, long end) lifespan2 = effect.ComputeLifespan(log, duration);
+                        var rotation = new AngleConnector(effect.Rotation.Z + 90);
+                        var slice = (PieDecoration)new PieDecoration(1200, 32, lifespan2, Colors.LightOrange, 0.4, new PositionConnector(effect.Position)).UsingRotationConnector(rotation);
+                        replay.AddDecorationWithBorder(slice, Colors.LightOrange, 0.6);
+                    }
+                }
                 break;
             // TODO: find all greens and their proper sizes
             case (int)ArcDPSEnums.TrashID.GreenOrb1Person:
@@ -123,6 +151,7 @@ internal class DecimaTheStormsinger : MountBalrior
     {
         base.ComputePlayerCombatReplayActors(player, log, replay);
 
+        // Target Order Overhead
         replay.AddOverheadIcons(player.GetBuffStatus(log, TargetOrder1JW, log.FightData.LogStart, log.FightData.LogEnd).Where(x => x.Value > 0), player, ParserIcons.TargetOrder1Overhead);
         replay.AddOverheadIcons(player.GetBuffStatus(log, TargetOrder2JW, log.FightData.LogStart, log.FightData.LogEnd).Where(x => x.Value > 0), player, ParserIcons.TargetOrder2Overhead);
         replay.AddOverheadIcons(player.GetBuffStatus(log, TargetOrder3JW, log.FightData.LogStart, log.FightData.LogEnd).Where(x => x.Value > 0), player, ParserIcons.TargetOrder3Overhead);
